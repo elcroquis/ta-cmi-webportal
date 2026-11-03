@@ -1,0 +1,116 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TA CMI Webportal",
+        "description": "Add a CMI device using your TA cloud account. Select the UVR1611 profile only for schematics matching the known UVR1611 layout. A custom profile lets you create points through Configure.",
+        "data": {
+          "cmi_id": "CMI serial number (e.g. CMI123456)",
+          "username": "TA portal user",
+          "password": "TA portal password",
+          "scheme_number": "Online schematic number (CGI)",
+          "profile": "Device profile",
+          "display_name": "Device name (optional)",
+          "user_field": "Username form field (advanced)",
+          "pass_field": "Password form field (advanced)",
+          "scan_interval": "Abfrageintervall (Sekunden, 60–3600)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "TA portal credentials",
+        "description": "Update the login credentials for this CMI.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Change CMI profile and schematic",
+        "data": {
+          "scheme_number": "Schematic number",
+          "profile": "Profile",
+          "display_name": "Device name"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "The CMI online schematic could not be read. Check credentials, device number, schematic, and permissions.",
+      "invalid_cmi": "Use a CMI number in the format CMI123456."
+    },
+    "abort": {
+      "already_configured": "This CMI is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "menu_options": {
+          "add": "Add entity",
+          "edit": "Edit entity",
+          "remove": "Remove entity",
+          "discover": "Schemapositionen erkennen",
+          "settings": "Einstellungen / Abfrageintervall"
+        }
+      },
+      "add": {
+        "title": "Add point from the CMI schematic",
+        "description": "Position is a div ID such as pos13. Writable controls require an actual loadChanger link and a CMI dropdown. Link index starts at 0.",
+        "data": {
+          "name": "Name",
+          "position": "Position (posN)",
+          "kind": "Entity type",
+          "unit": "Unit (optional)",
+          "link_index": "Edit link index (0 = first)",
+          "on_value": "Binary on label",
+          "off_value": "Binary off label"
+        }
+      },
+      "edit": {
+        "title": "Choose entity to edit",
+        "data": {
+          "point_id": "Entity"
+        }
+      },
+      "edit_details": {
+        "title": "Edit schematic point",
+        "data": {
+          "name": "Name",
+          "position": "Position (posN)",
+          "kind": "Entity type",
+          "unit": "Unit",
+          "link_index": "Edit link index",
+          "on_value": "Binary on label",
+          "off_value": "Binary off label"
+        }
+      },
+      "remove": {
+        "title": "Remove an entity mapping",
+        "data": {
+          "point_id": "Entity to remove"
+        }
+      },
+      "discover": {
+        "title": "Gefundenen Messpunkt auswählen",
+        "description": "Diese Positionen werden derzeit im CMI-Onlineschema angezeigt. Wähle einen Eintrag, um ihn zu konfigurieren.",
+        "data": {
+          "position": "Verfügbare Positionen"
+        }
+      },
+      "settings": {
+        "title": "Abfrageintervall",
+        "description": "Wie oft soll das CMI-Webportal abgefragt werden? 120 Sekunden empfohlen. Die Änderung wird automatisch übernommen und die Integration neu geladen.",
+        "data": {
+          "scan_interval": "Intervall in Sekunden (60–3600)"
+        }
+      }
+    },
+    "error": {
+      "invalid_point": "Invalid name, position or binary labels.",
+      "duplicate_point": "This point is already mapped as that entity type."
+    },
+    "abort": {
+      "no_points": "No custom entities have been configured yet.",
+      "no_schema": "Zurzeit keine Schemapositionen vorhanden. Nach der nächsten erfolgreichen Abfrage erneut versuchen."
+    }
+  }
+}
