@@ -16,7 +16,7 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from .api import CMIClient, CMIError
 from .const import (
     DOMAIN, CONF_CMI_ID, CONF_USER_FIELD, CONF_PASS_FIELD,
-    CONF_SCHEME, CONF_PROFILE, CONF_NAME, PROFILE_UVR, PROFILE_GENERIC, OPT_POINTS,
+    CONF_SCHEME, CONF_PROFILE, CONF_NAME, PROFILE_UVR, PROFILE_GENERIC, OPT_POINTS, OPT_CLIMATE,
     OPT_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SECONDS,
     MIN_SCAN_INTERVAL_SECONDS, MAX_SCAN_INTERVAL_SECONDS,
 )
@@ -38,7 +38,7 @@ def _entry_client(hass, data: dict):
 class CMIConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """One entry per CMI, with an optional UVR1611 compatibility profile."""
 
-    VERSION = 2
+    VERSION = 3
 
     async def async_step_user(self, user_input: dict | None = None):
         errors = {}
@@ -70,7 +70,7 @@ class CMIConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(OPT_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL_SECONDS):
                 vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL_SECONDS,
                                                    max=MAX_SCAN_INTERVAL_SECONDS)),
-            vol.Required(CONF_PROFILE, default=PROFILE_UVR): vol.In([PROFILE_UVR, PROFILE_GENERIC]),
+            vol.Required(CONF_PROFILE, default=PROFILE_GENERIC): vol.In([PROFILE_UVR, PROFILE_GENERIC]),
             vol.Optional(CONF_NAME, default=""): str,
             vol.Optional(CONF_USER_FIELD, default="username"): str,
             vol.Optional(CONF_PASS_FIELD, default="passwort"): str,
@@ -133,7 +133,7 @@ class CMIOptionsFlow(OptionsFlowWithReload):
 
     async def async_step_init(self, user_input=None):
         return self.async_show_menu(
-            step_id="init", menu_options=["settings", "discover", "add", "edit", "remove"]
+            step_id="init", menu_options=["settings", "discover", "add", "edit", "remove", "climate", "climate_remove"]
         )
 
     async def async_step_settings(self, user_input=None):
@@ -264,4 +264,55 @@ class CMIOptionsFlow(OptionsFlowWithReload):
             return self._save([p for p in points if p["id"] != user_input["point_id"]])
         return self.async_show_form(step_id="remove", data_schema=vol.Schema({
             vol.Required("point_id"): vol.In({p["id"]: f'{p["name"]} ({p["position"]})' for p in points})
+        }))
+
+
+    async def async_step_climate(self, user_input=None):
+        """Bind climate to explicit user-created room, setpoint and mode points."""
+        points = self._points()
+        temperatures = {item["id"]: f'{item["name"]} ({item["position"]})'
+                        for item in points if item["kind"] == "sensor" and item.get("unit") == "°C"}
+        targets = {item["id"]: f'{item["name"]} ({item["position"]})'
+                   for item in points if item["kind"] == "number" and item.get("unit") == "°C"}
+        modes = {"": "No mode selection"}
+        modes.update({item["id"]: f'{item["name"]} ({item["position"]})'
+                      for item in points if item["kind"] == "select"})
+        if not temperatures or not targets:
+            return self.async_abort(reason="no_climate_points")
+        saved = self.config_entry.options.get(OPT_CLIMATE, {})
+        errors = {}
+        if user_input is not None:
+            new = {k: str(user_input.get(k, "")).strip() for k in
+                   ("room_point", "setpoint_point", "mode_point", "mode_heat", "mode_off", "mode_auto")}
+            labels = [new[k] for k in ("mode_heat", "mode_off", "mode_auto") if new[k]]
+            if (new["room_point"] not in temperatures
+                    or new["setpoint_point"] not in targets
+                    or new["mode_point"] not in modes
+                    or (new["mode_point"] and not new["mode_heat"])
+                    or (not new["mode_point"] and labels)
+                    or len(labels) != len(set(labels))):
+                errors["base"] = "invalid_climate"
+            else:
+                return self.async_create_entry(data={**self.config_entry.options, OPT_CLIMATE: new})
+        return self.async_show_form(step_id="climate", errors=errors, data_schema=vol.Schema({
+            vol.Required("room_point", default=saved.get("room_point", next(iter(temperatures)))): vol.In(temperatures),
+            vol.Required("setpoint_point", default=saved.get("setpoint_point", next(iter(targets)))): vol.In(targets),
+            vol.Required("mode_point", default=saved.get("mode_point", "")): vol.In(modes),
+            vol.Optional("mode_heat", default=saved.get("mode_heat", "")): str,
+            vol.Optional("mode_off", default=saved.get("mode_off", "")): str,
+            vol.Optional("mode_auto", default=saved.get("mode_auto", "")): str,
+        }))
+
+    async def async_step_climate_remove(self, user_input=None):
+        """Delete the configured climate while preserving all other entities."""
+        if OPT_CLIMATE not in self.config_entry.options:
+            return self.async_abort(reason="no_climate")
+        if user_input is not None:
+            if user_input["confirm"]:
+                options = dict(self.config_entry.options)
+                options.pop(OPT_CLIMATE, None)
+                return self.async_create_entry(data=options)
+            return self.async_abort(reason="cancelled")
+        return self.async_show_form(step_id="climate_remove", data_schema=vol.Schema({
+            vol.Required("confirm", default=False): bool
         }))

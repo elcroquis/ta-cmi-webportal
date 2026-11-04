@@ -29,3 +29,5 @@ CONF_NAME = "display_name"
 PROFILE_UVR = "uvr1611"
 PROFILE_GENERIC = "custom"
 OPT_POINTS = "points"
+OPT_CLIMATE = "climate_mapping"
+
