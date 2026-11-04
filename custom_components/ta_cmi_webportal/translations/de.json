@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "TA CMI Webportal",
-        "description": "Add a CMI device using your TA cloud account. Select the UVR1611 profile only for schematics matching the known UVR1611 layout. A custom profile lets you create points through Configure.",
+        "description": "Neue Anlagen mit frei konfigurierbarem Profil einrichten. UVR1611 nur nach Prüfung der alten Schemapositionen wählen.",
         "data": {
           "cmi_id": "CMI serial number (e.g. CMI123456)",
           "username": "TA portal user",
@@ -49,7 +49,9 @@
           "edit": "Edit entity",
           "remove": "Remove entity",
           "discover": "Schemapositionen erkennen",
-          "settings": "Einstellungen / Abfrageintervall"
+          "settings": "Einstellungen / Abfrageintervall",
+          "climate": "Thermostat konfigurieren",
+          "climate_remove": "Thermostat entfernen"
         }
       },
       "add": {
@@ -102,15 +104,38 @@
         "data": {
           "scan_interval": "Intervall in Sekunden (60–3600)"
         }
+      },
+      "climate": {
+        "title": "Thermostat konfigurieren",
+        "description": "Nur selbst zugeordnete Sensor-/Zahl-/Auswahlfelder. Betriebsartentexte müssen exakt dem CMI entsprechen. Keine eigene Heizungsregelung.",
+        "data": {
+          "room_point": "Raumtemperatursensor",
+          "setpoint_point": "Schreibbarer Sollwert",
+          "mode_point": "Betriebsarten-Auswahl (optional)",
+          "mode_heat": "Option für Heizen (exakter Text)",
+          "mode_off": "Option für Aus (optional)",
+          "mode_auto": "Option für Automatik (optional)"
+        }
+      },
+      "climate_remove": {
+        "title": "Thermostat entfernen",
+        "description": "Andere Entitäten bleiben erhalten.",
+        "data": {
+          "confirm": "Entfernen bestätigen"
+        }
       }
     },
     "error": {
       "invalid_point": "Invalid name, position or binary labels.",
-      "duplicate_point": "This point is already mapped as that entity type."
+      "duplicate_point": "This point is already mapped as that entity type.",
+      "invalid_climate": "Ungültige Thermostat-Zuordnung oder doppelte Betriebsartentexte."
     },
     "abort": {
       "no_points": "No custom entities have been configured yet.",
-      "no_schema": "Zurzeit keine Schemapositionen vorhanden. Nach der nächsten erfolgreichen Abfrage erneut versuchen."
+      "no_schema": "Zurzeit keine Schemapositionen vorhanden. Nach der nächsten erfolgreichen Abfrage erneut versuchen.",
+      "no_climate_points": "Zuerst einen °C-Temperatursensor und ein schreibbares °C-Zahlenfeld hinzufügen.",
+      "no_climate": "Kein konfiguriertes Thermostat.",
+      "cancelled": "Abgebrochen."
     }
   }
 }

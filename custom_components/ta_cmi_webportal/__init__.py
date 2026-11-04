@@ -56,7 +56,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Keep existing UVR1611 entries and stable entity unique IDs on upgrade."""
-    if entry.version == 1:
-        hass.config_entries.async_update_entry(entry, version=2)
+    if entry.version in (1, 2):
+        # Prior releases treated a missing profile as the UVR1611 layout.
+        # Preserve old entries; only NEW installations default to custom.
+        data = dict(entry.data)
+        data.setdefault(CONF_PROFILE, PROFILE_UVR)
+        hass.config_entries.async_update_entry(entry, data=data, version=3)
         return True
-    return entry.version == 2
+    return entry.version == 3

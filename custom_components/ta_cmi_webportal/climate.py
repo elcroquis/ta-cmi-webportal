@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import CMIError
-from .const import CONF_CMI_ID, DOMAIN
+from .const import CONF_CMI_ID, DOMAIN, OPT_CLIMATE, PROFILE_UVR
 from .coordinator import CMIDataCoordinator
 from .write_support import MODES, read_auto_phase, read_mode
 
@@ -43,9 +43,15 @@ def effective_setpoint_position(mode: str | None, phase: str | None) -> str | No
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback
 ) -> None:
-    if entry.runtime_data.profile != "uvr1611":
+    if entry.runtime_data.profile == PROFILE_UVR:
+        async_add_entities([CMIHeatingClimate(entry.runtime_data, entry)])
         return
-    async_add_entities([CMIHeatingClimate(entry.runtime_data, entry)])
+    mapping = entry.options.get(OPT_CLIMATE, {})
+    if mapping:
+        from .climate_mapping import mapping_points
+        from .custom_climate import ConfiguredCMIClimate
+        if mapping_points(entry.runtime_data.points, mapping):
+            async_add_entities([ConfiguredCMIClimate(entry.runtime_data, entry, mapping)])
 
 
 class CMIHeatingClimate(CoordinatorEntity[CMIDataCoordinator], ClimateEntity):

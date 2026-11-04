@@ -31,11 +31,11 @@ api = load("api")
 HTML = """
 <div id='pos1'>  48,1 °C </div>
 <div id='pos7'>AUS</div>
-<div id='pos16'><a href="javascript:loadChanger('101300C0F80');">21 °C</a></div>
-<div id='pos18'><a href="javascript:loadChanger('101301D0F80');">PARTY</a><br>
-<a href="javascript:loadChanger('001301F0F');">00:00</a></div>
+<div id='pos16'><a href="javascript:loadChanger('ABCDEF1234');">21 °C</a></div>
+<div id='pos18'><a href="javascript:loadChanger('ABCDEF5678');">PARTY</a><br>
+<a href="javascript:loadChanger('ABCD1234');">00:00</a></div>
 """
-DIALOG = """<input name="changeadr" value="0F9001301D" type="hidden">
+DIALOG = """<input name="changeadr" value="AABBCCDD" type="hidden">
 <select name="changeto"><option value="3" selected>NORMAL</option>
 <option value="5">PARTY</option></select>"""
 
@@ -49,7 +49,7 @@ class ParsingTests(unittest.TestCase):
         anchors = generic.parse_anchors(HTML)
         self.assertEqual(generic.anchor_for(anchors, "pos18", 0)["text"], "PARTY")
         self.assertEqual(generic.anchor_for(anchors, "pos18", 1)["text"], "00:00")
-        self.assertEqual(generic.anchor_for(anchors, "pos18", 1)["address"], "001301F0F")
+        self.assertEqual(generic.anchor_for(anchors, "pos18", 1)["address"], "ABCD1234")
         self.assertEqual(generic.point_value({}, anchors, {"kind": "select", "position": "pos18", "link_index": 0}), "PARTY")
 
     def test_parsing_never_accepts_arbitrary_javascript(self):
@@ -64,7 +64,7 @@ class ParsingTests(unittest.TestCase):
 
     def test_dialog(self):
         dialog = write_support.parse_change_dialog(DIALOG)
-        self.assertEqual(dialog.change_address(), "0F9001301D")
+        self.assertEqual(dialog.change_address(), "AABBCCDD")
         self.assertEqual(dialog.selected_options["changeto"], [("3", "NORMAL")])
         self.assertEqual(dialog.encode_mode("PARTY"), "5")
 
@@ -99,7 +99,7 @@ class WriteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["pos2"], "PARTY")
         self.assertEqual(len(session.calls), 1)
         self.assertTrue(session.calls[0][0].endswith("/INCLUDE/change.cgi"))
-        self.assertEqual(session.calls[0][1]["params"], {"changeadr": "0F9001301D", "changeto": "5"})
+        self.assertEqual(session.calls[0][1]["params"], {"changeadr": "AABBCCDD", "changeto": "5"})
 
     async def test_stale_dialog_blocks_write(self):
         class Session:

@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "TA CMI Webportal",
-        "description": "Add a CMI device using your TA cloud account. Select the UVR1611 profile only for schematics matching the known UVR1611 layout. A custom profile lets you create points through Configure.",
+        "description": "Choose the custom profile for new devices. Use legacy UVR1611 only after verifying its schematic layout.",
         "data": {
           "cmi_id": "CMI serial number (e.g. CMI123456)",
           "username": "TA portal user",
@@ -49,7 +49,9 @@
           "edit": "Edit entity",
           "remove": "Remove entity",
           "discover": "Discover schematic points",
-          "settings": "Settings / polling interval"
+          "settings": "Settings / polling interval",
+          "climate": "Configure thermostat",
+          "climate_remove": "Remove thermostat"
         }
       },
       "add": {
@@ -102,15 +104,38 @@
         "data": {
           "scan_interval": "Interval in seconds (60–3600)"
         }
+      },
+      "climate": {
+        "title": "Configure thermostat",
+        "description": "Only your mapped sensor/number/select points. Mode labels must match CMI choices exactly. No independent heating control.",
+        "data": {
+          "room_point": "Room temperature sensor",
+          "setpoint_point": "Writable target temperature",
+          "mode_point": "Mode selection (optional)",
+          "mode_heat": "Heat option (exact label)",
+          "mode_off": "Off option (optional)",
+          "mode_auto": "Auto option (optional)"
+        }
+      },
+      "climate_remove": {
+        "title": "Remove thermostat",
+        "description": "Other entities are preserved.",
+        "data": {
+          "confirm": "Confirm removal"
+        }
       }
     },
     "error": {
       "invalid_point": "Invalid name, position or binary labels.",
-      "duplicate_point": "This point is already mapped as that entity type."
+      "duplicate_point": "This point is already mapped as that entity type.",
+      "invalid_climate": "Invalid climate mapping or duplicate mode labels."
     },
     "abort": {
       "no_points": "No custom entities have been configured yet.",
-      "no_schema": "No positions available yet. Try again after a successful update."
+      "no_schema": "No positions available yet. Try again after a successful update.",
+      "no_climate_points": "First add a °C sensor and a writable °C number point.",
+      "no_climate": "No configured thermostat.",
+      "cancelled": "Cancelled."
     }
   }
 }
