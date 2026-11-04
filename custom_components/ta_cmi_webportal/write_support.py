@@ -13,17 +13,6 @@ from html.parser import HTMLParser
 import re
 
 
-# Observed anchors in a UVR1611 reference online schematic.
-KNOWN_LINKS = {
-    "pos16": "101300C0F80",  # Normal temperature
-    "pos17": "101300D0F80",  # Reduced temperature
-    "pos18": "101301D0F80",  # Heating mode
-    "party_end": "001301F0F",  # Party ends at this clock time (only in PARTY mode)
-    "special_end": "00130200F",  # Shared holiday/vacation end, day and month only
-}
-# Observed in the user's actual holiday/vacation change dialog (UVR1611).
-SPECIAL_END_CHANGEADR = "0FB9013020"
-
 # Values and labels observed in the real CMI operating-mode dialog.
 MODES = {
     "STANDBY": "1",
@@ -113,82 +102,44 @@ def next_occurrence(day_month: str, today: date) -> date:
     raise ValueError("Enddatum konnte keinem Kalenderjahr zugeordnet werden")
 
 
-class _EditLinkParser(HTMLParser):
-    """Parse approved change links and special values inside pos16..pos18."""
+def _legacy_links(html: str) -> tuple[dict[str, str], str | None, str | None]:
+    """Discover legacy control links from the live CMI schematic, never hardcode IDs."""
+    from .generic import parse_anchors
 
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self.stack: list[str | None] = []
-        self.links: dict[str, str] = {}
-        self.party_end: str | None = None
-        self.special_end: str | None = None
-        self._aux_kind: str | None = None
-        self._aux_text: list[str] = []
+    anchors = parse_anchors(html)
+    links: dict[str, str] = {}
+    for position in ("pos16", "pos17", "pos18"):
+        choices = anchors.get(position, [])
+        if choices and choices[0]["address"]:
+            links[position] = choices[0]["address"]
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        values = dict(attrs)
-        parent = self.stack[-1] if self.stack else None
-        position = values.get("id") if tag == "div" else None
-        current = position if position in ("pos16", "pos17", "pos18") else parent
-        if tag == "a" and current:
-            match = _ANCHOR.fullmatch(values.get("href") or "")
-            if match:
-                address = match.group(1).upper()
-                if address == KNOWN_LINKS.get(current):
-                    self.links[current] = address
-                elif current == "pos18":
-                    for kind in ("party_end", "special_end"):
-                        if address == KNOWN_LINKS[kind]:
-                            self.links[kind] = address
-                            self._aux_kind = kind
-                            self._aux_text = []
-                            break
-        if tag not in _VOID_ELEMENTS:
-            self.stack.append(current)
-
-    def handle_data(self, data: str) -> None:
-        if self._aux_kind:
-            self._aux_text.append(data)
-
-    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag not in _VOID_ELEMENTS:
-            self.handle_starttag(tag, attrs)
-            self.handle_endtag(tag)
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag == "a" and self._aux_kind:
-            value = " ".join(" ".join(self._aux_text).split())
-            if self._aux_kind == "party_end" and _TIME.fullmatch(value):
-                self.party_end = value
-            elif self._aux_kind == "special_end":
-                try:
-                    self.special_end = normalize_day_month(value)
-                except CMIDialogError:
-                    pass
-            self._aux_kind = None
-            self._aux_text = []
-        if tag not in _VOID_ELEMENTS and self.stack:
-            self.stack.pop()
+    extra = anchors.get("pos18", [])
+    party_end = special_end = None
+    if len(extra) >= 2 and extra[1]["address"]:
+        mode = read_mode(extra[0]["text"])
+        value = extra[1]["text"]
+        if mode == "PARTY" and _TIME.fullmatch(value):
+            links["party_end"] = extra[1]["address"]
+            party_end = value
+        elif mode in ("URLAUB", "FEIERTAG"):
+            try:
+                special_end = normalize_day_month(value)
+                links["special_end"] = extra[1]["address"]
+            except CMIDialogError:
+                pass
+    return links, party_end, special_end
 
 
 def parse_edit_links(html: str) -> dict[str, str]:
-    parser = _EditLinkParser()
-    parser.feed(html)
-    return parser.links
+    return _legacy_links(html)[0]
 
 
 def parse_party_end(html: str) -> str | None:
-    """Read the PARTY clock time only from its separate, fixed CMI link."""
-    parser = _EditLinkParser()
-    parser.feed(html)
-    return parser.party_end
+    return _legacy_links(html)[1]
 
 
 def parse_special_end(html: str) -> str | None:
-    """Read URLAUB/FEIERTAG final day, without fabricating a year."""
-    parser = _EditLinkParser()
-    parser.feed(html)
-    return parser.special_end
+    return _legacy_links(html)[2]
 
 
 class ChangeDialog(HTMLParser):
@@ -381,11 +332,7 @@ class ChangeDialog(HTMLParser):
         """
         requested = normalize_day_month(requested)
         current_display = normalize_day_month(current_display)
-        if self.change_address().upper() != SPECIAL_END_CHANGEADR:
-            raise CMIDialogError(
-                "Unerwartete Änderungsadresse für Urlaub/Feiertag; "
-                "Schreiben vorsichtshalber blockiert"
-            )
+        self.change_address()  # Validate the live address (no installation-specific constants).
 
         items = self.selects.get("changeto")
         if items is not None:

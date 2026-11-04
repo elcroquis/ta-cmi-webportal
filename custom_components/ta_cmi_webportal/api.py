@@ -9,10 +9,10 @@ from urllib.parse import urljoin, urlparse
 
 from aiohttp import ClientError, ClientSession
 
-from .const import LOGIN_FORM_URL, LOGIN_POST_URL, PROFILE_UVR
+from .const import LOGIN_FORM_URL, LOGIN_POST_URL, PROFILE_UVR, PROFILE_GENERIC
 from .generic import parse_anchors, anchor_for, parse_numeric
 from .write_support import (
-    CMIDialogError, KNOWN_LINKS, MODES, parse_change_dialog, parse_edit_links,
+    CMIDialogError, MODES, parse_change_dialog, parse_edit_links,
     parse_number, parse_party_end, parse_special_end, read_auto_phase, read_mode,
     normalize_day_month,
 )
@@ -125,7 +125,7 @@ class CMIClient:
 
     def __init__(self, session: ClientSession, cmi_id: str, username: str, password: str,
                  user_field: str = "username", pass_field: str = "passwort",
-                 scheme_number: int = 2, profile: str = PROFILE_UVR) -> None:
+                 scheme_number: int = 2, profile: str = PROFILE_GENERIC) -> None:
         self.session = session
         self.cmi_id = cmi_id.lower()
         if not re.fullmatch(r"cmi[0-9]{6,10}", self.cmi_id):
@@ -279,15 +279,15 @@ class CMIClient:
 
     async def _popup(self, position: str):
         """Load the same edit popup the web interface uses, without writing."""
-        # Never trust old cached links or arbitrary server-provided addresses.
-        if self._edit_links.get(position) != KNOWN_LINKS.get(position):
-            raise CMIError(
-                f"{position} besitzt nicht den erwarteten Bearbeiten-Link im Schema"
-            )
+        # Only accept a link discovered from the current live CMI schema.
+        # The change dialog still validates the selected value before writing.
+        link = self._edit_links.get(position)
+        if not link or not re.fullmatch(r"[0-9A-F]{6,32}", link):
+            raise CMIError(f"{position} hat keinen gültigen Bearbeiten-Link")
         try:
             async with self.session.get(
                 self.base + "INCLUDE/changer.cgi",
-                params={"sadr": KNOWN_LINKS[position]},
+                params={"sadr": link},
                 timeout=20,
                 headers={"Referer": self.base + "schema.html", "X-Requested-With": "XMLHttpRequest"},
             ) as resp:
@@ -354,6 +354,9 @@ class CMIClient:
                         self.temperature_steps[position] = step
             try:
                 if position == "pos18":
+                    selected = dialog.selected_options.get("changeto", [])
+                    if len(selected) != 1 or read_mode(selected[0][1]) != read_mode(current):
+                        raise CMIDialogError("Der Betriebsarten-Dialog ist nicht mehr aktuell")
                     encoded = dialog.encode_mode(value)
                 elif position == "party_end":
                     encoded = dialog.encode_party_end(value, current)
