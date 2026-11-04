@@ -1,4 +1,4 @@
-# TA CMI Webportal for Home Assistant (community beta)
+# TA CMI Webportal for Home Assistant (development beta v0.5.0b1)
 
 **Unofficial community project; not affiliated with Technische Alternative.**
 
@@ -10,7 +10,7 @@ is done in the Home Assistant UI; **no YAML required**.
 
 - Multiple independent CMI entries (different serial numbers and credentials).
 - Choose the CMI online schematic number (`schematic_files/<number>.cgi`).
-- **UVR1611 compatibility profile**: existing temperature, flow, pump, mode,
+- **Optional layout-specific UVR1611 compatibility profile**: existing temperature, flow, pump, mode,
   target temperatures, special-mode time/date and native climate entities.
 - **Custom profile**: add/edit/remove sensors, binary sensors, selection fields
   and number controls, mapping each to a `posN` in the online schematic.
@@ -19,6 +19,9 @@ is done in the Home Assistant UI; **no YAML required**.
 - Change requests are sent **once**, then verified by safe read-only requests.
 - Session renewal and recovery from temporary empty schematic responses.
 - Dedicated session per CMI to prevent portal cookie crossover.
+- New installations default to **Custom**: no preset sensor positions.
+- Optional native climate entity from explicitly mapped °C room sensor and writable °C number; exact mode labels can also be mapped.
+- All legacy edit addresses are read from current CMI HTML, not fixed constants.
 - English and German user interface.
 
 ## Important limitations
@@ -43,7 +46,7 @@ noncritical settings. No automatic write retries occur.
 2. Restart Home Assistant.
 3. **Settings → Devices & services → Add integration → TA CMI Webportal.**
 4. Enter CMI serial, TA portal username and password, online schematic number,
-   and either **UVR1611 (compatible)** or **Custom schematic**.
+   and either **Custom schematic** (recommended) or **UVR1611** (legacy layout, only after verifying point positions).
 5. For custom mappings: **Settings → Devices & services → TA CMI Webportal → Configure**.
    Use Add / Edit / Remove to manage point entities entirely in the UI.
    - `position`: `pos1`, `pos2`, ... exactly as the online schematic HTML.
@@ -52,7 +55,8 @@ noncritical settings. No automatic write retries occur.
    - `link_index`: zero-based index of a `loadChanger(...)` link inside that
      `posN` HTML element, for controls. For example `pos18` may have 2 links.
    - `on_value`, `off_value`: exact state labels for binary sensors.
-6. After saving an entity mapping, Home Assistant automatically reloads the
+6. For a native thermostat, map a °C sensor and writable °C number, then use **Configure → Configure thermostat**. Optional exact mode labels map Heat/Off/Auto.
+7. After saving an entity mapping, Home Assistant automatically reloads the
    integration. You don't need to restart for each new point.
 
 ### Custom HACS repository
@@ -63,7 +67,7 @@ repository** and select the integration category. Install and restart.
 **This archive is repository source, not an already published HACS listing.**
 You must publish it on GitHub first. See [PUBLISHING.md](PUBLISHING.md).
 
-## Upgrading from v0.3.0
+## Upgrading from v0.3.0 or v0.4.0
 
 The default profile for existing entries with no stored profile remains
 `uvr1611`, and the schematic number remains `2`. The existing entity unique
@@ -90,3 +94,7 @@ Validate with Home Assistant **hassfest** and the **HACS action** before a publi
 HACS submission. Real device testing is still required for the beta.
 
 Licensed under MIT.
+
+## v0.5.0b1 development disclaimer
+
+The **Custom** profile is now the default for *new* installations. Existing entries are migrated to the original UVR1611 profile and retain entity unique IDs. The legacy profile remains schematic-specific and must not be used blindly with another device. This branch is **not released**; verify migration, UI configuration and write actions in a Home Assistant test environment before merging.
