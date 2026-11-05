@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from time import monotonic
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -20,11 +21,16 @@ class CMIDataCoordinator(DataUpdateCoordinator[dict[str, str]]):
         self.points = get_points(entry)
         self.profile = client.profile
         self._probed_temperature_options = False
+        # When a CMI dialog is unavailable, don't re-fetch it on every poll.
+        self._next_probe_at = 0.0
 
     async def _async_update_data(self) -> dict[str, str]:
         try:
             values = await self.client.read_values()
-            if not self._probed_temperature_options:
+            if not self._probed_temperature_options and monotonic() >= self._next_probe_at:
+                # Back off failed optional probes for 30 minutes. Sensor updates
+                # continue at the user's normal polling interval.
+                self._next_probe_at = monotonic() + 1800
                 # Probe optional dropdowns; missing dialogs are retried on the
                 # next refresh without ever making sensor reading fail.
                 if self.profile == PROFILE_UVR:
