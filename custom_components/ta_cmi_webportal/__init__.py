@@ -35,15 +35,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # start-up or after switching a heating mode.  Unlike the "first refresh"
     # helper, async_refresh() lets the integration load with entities marked
     # unavailable. Normal coordinator polling recovers them automatically.
-    await coordinator.async_refresh()
-    # Provide a safe, actionable log message for failed initial reads.
-    if not coordinator.last_update_success:
-        _LOGGER.warning(
-            "TA CMI: Startabfrage fehlgeschlagen; Entitäten vorerst nicht verfügbar: %s",
-            coordinator.last_exception,
-        )
-    entry.runtime_data = coordinator
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    try:
+        await coordinator.async_refresh()
+        # Provide a safe, actionable log message for failed initial reads.
+        if not coordinator.last_update_success:
+            _LOGGER.warning(
+                "TA CMI: Startabfrage fehlgeschlagen; Entitäten vorerst nicht verfügbar: %s",
+                coordinator.last_exception,
+            )
+        entry.runtime_data = coordinator
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    except BaseException:
+        # A failed or cancelled setup must not keep an isolated portal session.
+        await session.close()
+        raise
     return True
 
 
