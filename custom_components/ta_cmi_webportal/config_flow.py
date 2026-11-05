@@ -35,6 +35,15 @@ def _entry_client(hass, data: dict):
     )
 
 
+async def _test_connection(hass, data: dict) -> None:
+    """Validate portal access and always release this short-lived session."""
+    client = _entry_client(hass, data)
+    try:
+        await client.read_values()
+    finally:
+        await client.session.close()
+
+
 class CMIConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """One entry per CMI, with an optional UVR1611 compatibility profile."""
 
@@ -49,8 +58,7 @@ class CMIConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_CMI_ID] = "invalid_cmi"
             else:
                 try:
-                    client = _entry_client(self.hass, new)
-                    await client.read_values()
+                    await _test_connection(self.hass, new)
                 except CMIError:
                     errors["base"] = "cannot_connect"
                 else:
@@ -91,7 +99,7 @@ class CMIConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             details = {**entry.data, **user_input}
             try:
-                await _entry_client(self.hass, details).read_values()
+                await _test_connection(self.hass, details)
             except CMIError:
                 errors["base"] = "cannot_connect"
             else:
@@ -108,7 +116,7 @@ class CMIConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             details = {**entry.data, **user_input}
             try:
-                await _entry_client(self.hass, details).read_values()
+                await _test_connection(self.hass, details)
             except CMIError:
                 errors["base"] = "cannot_connect"
             else:
